@@ -3,135 +3,88 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>AR Experience V2</title>
-    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
+    <title>AR Experience V3</title>
     
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
+
     <style>
-      body { margin: 0; overflow: hidden; background-color: black; }
-      #loading {
-        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-        color: white; background: rgba(0,0,0,0.7); padding: 20px; border-radius: 10px;
-        z-index: 999; font-family: sans-serif; text-align: center;
-      }
-      #start-btn {
-        margin-top: 10px; padding: 10px 20px; font-size: 16px; cursor: pointer;
+      body { margin: 0; overflow: hidden; }
+      /* 強制讓除錯訊息顯示在最上層 */
+      #debug-ui {
+        position: fixed; top: 10px; left: 10px; z-index: 9999; 
+        background: rgba(0,0,0,0.5); color: #00ff00; padding: 10px;
+        pointer-events: none;
       }
     </style>
   </head>
 
-  <body>
-    <div id="loading">
-      <div>系統準備中...</div>
-      <button id="start-btn" style="display:none;">點擊開始 AR 體驗</button>
-      <div id="debug-text" style="font-size: 12px; color: yellow; margin-top:5px;"></div>
+  <body style="margin: 0; overflow: hidden;">
+    
+    <div id="debug-ui">
+      狀態: 等待相機...<br>
+      (如果看到紅色方塊，表示3D引擎正常)
     </div>
 
-    <a-scene embedded renderer="logarithmicDepthBuffer: true; alpha: true;" vr-mode-ui="enabled: false">
-      
+    <a-scene 
+      embedded 
+      arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+      vr-mode-ui="enabled: false"
+      renderer="logarithmicDepthBuffer: true; colorManagement: true;">
+
       <a-assets>
         <a-asset-item id="logo-model" src="./logo.glb"></a-asset-item>
       </a-assets>
 
-      <a-entity light="type: ambient; intensity: 2;"></a-entity>
-      <a-entity light="type: directional; intensity: 1.5; position: 2 4 2"></a-entity>
-
-      <a-box color="red" position="0 0.5 -3" scale="0.5 0.5 0.5" animation="property: rotation; to: 0 360 0; loop: true; dur: 3000"></a-box>
+      <a-box color="red" position="0 0 -2" scale="0.2 0.2 0.2" animation="property: rotation; to: 0 360 0; loop: true; dur: 2000"></a-box>
 
       <a-entity 
         id="my-logo"
         gltf-model="#logo-model"
-        position="0 -0.5 -4"
-        scale="1 1 1" 
+        position="0 0 -4"
+        scale="1 1 1"
         animation-mixer
         cursor-listener>
       </a-entity>
 
-      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-      
-      <a-sky color="#000000" opacity="0"></a-sky> 
+      <a-entity camera></a-entity>
 
     </a-scene>
 
     <script>
-      const debugText = document.getElementById('debug-text');
-      const startBtn = document.getElementById('start-btn');
-      const loadingDiv = document.getElementById('loading');
-
-      // 顯示除錯訊息
-      function log(msg) {
-        console.log(msg);
-        debugText.innerText = msg;
-      }
-
-      // 1. 初始化相機函數
-      async function initCamera() {
-        try {
-          // 強制設定：使用後置鏡頭 (environment)
-          const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { 
-              facingMode: "environment", 
-              width: { ideal: 1280 },
-              height: { ideal: 720 }
-            }, 
-            audio: false 
-          });
-
-          const video = document.createElement('video');
-          video.srcObject = stream;
-          // iOS 關鍵設定：必須有這些屬性才能自動播放
-          video.setAttribute('autoplay', '');
-          video.setAttribute('muted', '');
-          video.setAttribute('playsinline', ''); 
-          
-          video.style.position = 'absolute';
-          video.style.top = '0';
-          video.style.left = '0';
-          video.style.width = '100%';
-          video.style.height = '100%';
-          video.style.objectFit = 'cover';
-          video.style.zIndex = '-1'; 
-          
-          document.body.appendChild(video);
-          
-          // 等待影片真的開始跑
-          video.onloadedmetadata = () => {
-             video.play();
-             loadingDiv.style.display = 'none'; // 隱藏讀取畫面
-          };
-
-        } catch (err) {
-          log("相機錯誤: " + err.name + " - " + err.message);
-          // 如果自動開啟失敗，顯示按鈕讓使用者手動點擊 (iOS 常見問題)
-          startBtn.style.display = 'block';
-        }
-      }
-
-      // 2. 陀螺儀互動邏輯
+      // 簡單的除錯與互動邏輯
+      const debugUI = document.getElementById('debug-ui');
       const logo = document.querySelector('#my-logo');
+
+      // 監聽場景載入完成
+      document.querySelector('a-scene').addEventListener('loaded', function () {
+        debugUI.innerHTML += "<br>3D 場景已載入!";
+      });
+
+      // 陀螺儀互動
       window.addEventListener("deviceorientation", (event) => {
         if (!logo) return;
+        // 稍微顯示數據證明陀螺儀有在動
+        debugUI.innerHTML = `狀態: 執行中<br>Tilt: ${Math.round(event.gamma)}`;
+        
         const tiltX = event.beta;  
         const tiltY = event.gamma; 
-        // 加上限制，避免轉太快
-        if(tiltY) logo.object3D.rotation.y = (tiltY * 0.04); 
-        if(tiltX) logo.object3D.rotation.x = (tiltX * 0.04);
+        
+        // 讓模型旋轉
+        if(tiltY) logo.object3D.rotation.y = (tiltY * 0.05); 
+        if(tiltX) logo.object3D.rotation.x = (tiltX * 0.05);
       });
 
-      // 3. 點擊連結
-      logo.addEventListener('click', function () {
-         window.open('https://anotherartinthecloud.xyz/', '_blank');
+      // 點擊互動
+      document.addEventListener('click', function () {
+         // 為了方便點擊，改為點擊螢幕任何地方都會觸發(測試用)
+         // 如果你想正式上線，請改回 logo.addEventListener...
+         const check = confirm("要前往官網嗎？");
+         if(check) {
+            window.open('https://anotherartinthecloud.xyz/', '_blank');
+         }
       });
-
-      // 程式入口：嘗試啟動
-      startBtn.addEventListener('click', () => {
-        startBtn.style.display = 'none';
-        initCamera();
-      });
-
-      // 頁面載入後自動執行
-      window.onload = initCamera;
-
     </script>
   </body>
 </html>
