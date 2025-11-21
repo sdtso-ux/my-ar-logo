@@ -3,29 +3,24 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>AR Experience V3</title>
-    
+    <title>AR Experience V4</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
 
     <style>
       body { margin: 0; overflow: hidden; }
-      /* 強制讓除錯訊息顯示在最上層 */
+      /* 除錯文字改得不明顯一點 */
       #debug-ui {
-        position: fixed; top: 10px; left: 10px; z-index: 9999; 
-        background: rgba(0,0,0,0.5); color: #00ff00; padding: 10px;
-        pointer-events: none;
+        position: fixed; bottom: 10px; left: 10px; z-index: 9999; 
+        color: rgba(255, 255, 255, 0.5); font-size: 10px; pointer-events: none;
       }
     </style>
   </head>
 
   <body style="margin: 0; overflow: hidden;">
     
-    <div id="debug-ui">
-      狀態: 等待相機...<br>
-      (如果看到紅色方塊，表示3D引擎正常)
-    </div>
+    <div id="debug-ui">V4 Running...</div>
 
     <a-scene 
       embedded 
@@ -37,15 +32,21 @@
         <a-asset-item id="logo-model" src="./logo.glb"></a-asset-item>
       </a-assets>
 
-      <a-box color="red" position="0 0 -2" scale="0.2 0.2 0.2" animation="property: rotation; to: 0 360 0; loop: true; dur: 2000"></a-box>
+      <a-entity light="type: ambient; intensity: 3;"></a-entity>
+      <a-entity light="type: directional; intensity: 2; position: 1 1 1"></a-entity>
+      <a-entity light="type: directional; intensity: 2; position: -1 1 2"></a-entity>
 
-      <a-entity 
-        id="my-logo"
-        gltf-model="#logo-model"
-        position="0 0 -4"
-        scale="1 1 1"
-        animation-mixer
-        cursor-listener>
+      <a-entity id="logo-wrapper" position="0 0 -4">
+        
+        <a-entity 
+          id="my-logo"
+          gltf-model="#logo-model"
+          position="0 0 0" 
+          scale="0.05 0.05 0.05"
+          animation-mixer
+          cursor-listener>
+        </a-entity>
+
       </a-entity>
 
       <a-entity camera></a-entity>
@@ -53,34 +54,25 @@
     </a-scene>
 
     <script>
-      // 簡單的除錯與互動邏輯
-      const debugUI = document.getElementById('debug-ui');
+      const wrapper = document.querySelector('#logo-wrapper');
       const logo = document.querySelector('#my-logo');
-
-      // 監聽場景載入完成
-      document.querySelector('a-scene').addEventListener('loaded', function () {
-        debugUI.innerHTML += "<br>3D 場景已載入!";
-      });
 
       // 陀螺儀互動
       window.addEventListener("deviceorientation", (event) => {
-        if (!logo) return;
-        // 稍微顯示數據證明陀螺儀有在動
-        debugUI.innerHTML = `狀態: 執行中<br>Tilt: ${Math.round(event.gamma)}`;
+        if (!wrapper) return;
         
         const tiltX = event.beta;  
         const tiltY = event.gamma; 
         
-        // 讓模型旋轉
-        if(tiltY) logo.object3D.rotation.y = (tiltY * 0.05); 
-        if(tiltX) logo.object3D.rotation.x = (tiltX * 0.05);
+        // 我們旋轉 Wrapper，而不是直接旋轉 Logo
+        // 這樣比較容易控制中心點
+        if(tiltY) wrapper.object3D.rotation.y = (tiltY * 0.05); 
+        if(tiltX) wrapper.object3D.rotation.x = (tiltX * 0.05);
       });
 
       // 點擊互動
       document.addEventListener('click', function () {
-         // 為了方便點擊，改為點擊螢幕任何地方都會觸發(測試用)
-         // 如果你想正式上線，請改回 logo.addEventListener...
-         const check = confirm("要前往官網嗎？");
+         const check = confirm("前往官網？");
          if(check) {
             window.open('https://anotherartinthecloud.xyz/', '_blank');
          }
