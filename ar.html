@@ -1,0 +1,47 @@
+<script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+
+<style>
+  /* Hide the "Start AR" button until ready */
+  #ar-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none;}
+</style>
+
+<a-scene mindar-image="imageTargetSrc: ./targets.mind;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+  
+  <a-assets>
+    <a-asset-item id="logoModel" src="YOUR_HOSTED_URL/logo.glb"></a-asset-item>
+  </a-assets>
+
+  <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+  <a-entity id="my-3d-logo" 
+            gltf-model="#logoModel" 
+            position="0 0 -2" 
+            scale="0.5 0.5 0.5">
+  </a-entity>
+
+</a-scene>
+
+<script>
+  const logo = document.querySelector('#my-3d-logo');
+
+  // Listen for Phone Tilt/Rotation
+  window.addEventListener("deviceorientation", (event) => {
+    // alpha: rotation around z-axis
+    // beta: front-to-back tilt
+    // gamma: left-to-right tilt
+    const tiltX = event.beta;  
+    const tiltY = event.gamma; 
+
+    // Logic: If the user tilts phone more than 20 degrees...
+    if (logo && tiltY > 20) {
+       // Rotate the logo or trigger an animation
+       logo.setAttribute('rotation', '0 90 0'); 
+    } else if (logo && tiltY < -20) {
+       logo.setAttribute('rotation', '0 -90 0');
+    } else {
+       // Return to center
+       logo.setAttribute('rotation', '0 0 0');
+    }
+  });
+</script>
