@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>My AR Experience</title>
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
+    
+    <style>
+      /* 讓 AR 畫面全螢幕 */
+      body { margin: 0; overflow: hidden; }
+      /* 簡單的 Loading 提示 */
+      #loading {
+        position: fixed; top: 10px; left: 10px; color: white; 
+        background: rgba(0,0,0,0.5); padding: 5px; z-index: 999; font-family: sans-serif;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="loading">AR Loading... 請允許相機權限</div>
+
+    <a-scene embedded renderer="logarithmicDepthBuffer: true;" vr-mode-ui="enabled: false">
+      
+      <a-assets>
+        <a-asset-item id="logo-model" src="./AAIC_logo_Surfacing_v0001.glb"></a-asset-item>
+      </a-assets>
+
+      <a-entity light="type: ambient; intensity: 1.5;"></a-entity>
+      <a-entity light="type: directional; intensity: 1; position: -1 1 0"></a-entity>
+
+      <a-entity 
+        id="my-logo"
+        gltf-model="#logo-model"
+        position="0 0 -3"
+        scale="1 1 1"
+        animation-mixer
+        cursor-listener>
+      </a-entity>
+
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+      
+      <a-sky color="#000000" opacity="0"></a-sky> 
+
+    </a-scene>
+
+    <script>
+      // === 這是邏輯區 ===
+      
+      // 1. 取得 Logo 物件
+      const logo = document.querySelector('#my-logo');
+
+      // 2. 陀螺儀互動 (偵測手機晃動)
+      window.addEventListener("deviceorientation", (event) => {
+        if (!logo) return;
+        
+        // 取得手機傾斜角度
+        const tiltX = event.beta;  // 前後傾斜
+        const tiltY = event.gamma; // 左右傾斜
+
+        // 根據傾斜度旋轉模型 (這裡可以調整靈敏度)
+        // 將手機的角度轉換成模型的旋轉角度
+        // 這種數學運算會讓模型看起來像是「浮」在空中並對動作有反應
+        logo.object3D.rotation.y = (tiltY * 0.05); 
+        logo.object3D.rotation.x = (tiltX * 0.05);
+      });
+
+      // 3. 點擊互動 (連結回官網)
+      logo.addEventListener('click', function () {
+        // 用新分頁開啟
+        window.open('https://anotherartinthecloud.xyz/', '_blank');
+      });
+      
+      // 4. 請求相機權限 (因為隱私權問題，現在瀏覽器比較嚴格)
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then((stream) => {
+          // 建立一個 video 元素放在背景
+          const video = document.createElement('video');
+          video.srcObject = stream;
+          video.play();
+          video.style.position = 'absolute';
+          video.style.top = '0';
+          video.style.left = '0';
+          video.style.width = '100%';
+          video.style.height = '100%';
+          video.style.objectFit = 'cover';
+          video.style.zIndex = '-1'; // 放在最底層
+          document.body.appendChild(video);
+          document.getElementById('loading').style.display = 'none';
+        })
+        .catch((err) => {
+          console.error("相機開啟失敗:", err);
+          document.getElementById('loading').innerText = "無法存取相機，請檢查權限";
+        });
+    </script>
+  </body>
+</html>
