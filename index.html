@@ -3,58 +3,105 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>AR Experience V6 - Image Tracking</title>
-    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
+    <title>AR Experience V5</title>
     
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
+
     <style>
-      body { margin: 0; overflow: hidden; }
-      /* 提示文字 */
-      #guide {
-        position: fixed; top: 10%; left: 50%; transform: translateX(-50%);
-        background: rgba(0,0,0,0.7); color: white; padding: 10px; border-radius: 20px;
-        text-align: center; font-size: 14px; z-index: 999; pointer-events: none;
+      body { margin: 0; overflow: hidden; background-color: black; }
+      
+      /* 這是背景相機 */
+      #cam-video {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        object-fit: cover; z-index: -1; /* 放在最底層 */
+      }
+
+      /* 讀取中的提示 */
+      #loading {
+        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        color: white; background: rgba(0,0,0,0.6); padding: 20px; border-radius: 10px;
+        z-index: 999; font-family: sans-serif;
       }
     </style>
   </head>
 
-  <body style="margin: 0; overflow: hidden;">
+  <body>
     
-    <div id="guide">請將鏡頭對準 QR Code</div>
+    <div id="loading">啟動相機中...</div>
 
-    <a-scene 
-      embedded 
-      arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
-      vr-mode-ui="enabled: false"
-      renderer="logarithmicDepthBuffer: true; colorManagement: true;">
+    <video id="cam-video" autoplay muted playsinline></video>
 
+    <a-scene embedded renderer="alpha: true; logarithmicDepthBuffer: true;" vr-mode-ui="enabled: false">
+      
       <a-assets>
         <a-asset-item id="logo-model" src="./logo.glb"></a-asset-item>
       </a-assets>
 
-      <a-marker type="pattern" url="./pattern-marker.patt">
-        
+      <a-entity light="type: ambient; intensity: 2;"></a-entity>
+      <a-entity light="type: directional; intensity: 2; position: 1 2 1"></a-entity>
+
+      <a-entity id="logo-wrapper" position="0 0 -4">
         <a-entity 
           id="my-logo"
           gltf-model="#logo-model"
           position="0 0 0" 
-          scale="0.5 0.5 0.5"
-          rotation="-90 0 0"
-          animation-mixer>
+          scale="0.05 0.05 0.05"
+          animation-mixer
+          cursor-listener>
         </a-entity>
+      </a-entity>
 
-      </a-marker>
-
-      <a-entity camera></a-entity>
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+      
+      <a-sky color="#000000" opacity="0"></a-sky> 
 
     </a-scene>
 
     <script>
-      // 點擊前往官網的邏輯
+      const loading = document.getElementById('loading');
+      const videoElement = document.getElementById('cam-video');
+      const wrapper = document.querySelector('#logo-wrapper');
+
+      // === 1. 啟動相機 (最單純的寫法) ===
+      async function startCamera() {
+        try {
+          // 嘗試取得後置鏡頭
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { 
+              facingMode: "environment",
+              width: { ideal: 1280 },
+              height: { ideal: 720 }
+            },
+            audio: false
+          });
+          
+          videoElement.srcObject = stream;
+          loading.style.display = 'none'; // 隱藏讀取文字
+          
+        } catch (error) {
+          console.error("相機錯誤:", error);
+          loading.innerText = "請允許相機權限 / 無法開啟鏡頭";
+        }
+      }
+
+      // 執行啟動
+      startCamera();
+
+      // === 2. 陀螺儀互動 ===
+      window.addEventListener("deviceorientation", (event) => {
+        if (!wrapper) return;
+        const tiltX = event.beta;  
+        const tiltY = event.gamma; 
+        
+        // 旋轉邏輯
+        if(tiltY) wrapper.object3D.rotation.y = (tiltY * 0.05); 
+        if(tiltX) wrapper.object3D.rotation.x = (tiltX * 0.05);
+      });
+
+      // === 3. 點擊連結 ===
       document.addEventListener('click', function () {
-         const check = confirm("前往官網？");
-         if(check) {
+         if(confirm("前往官網？")) {
             window.open('https://anotherartinthecloud.xyz/', '_blank');
          }
       });
