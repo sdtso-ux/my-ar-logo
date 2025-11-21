@@ -2,38 +2,47 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>My AR Experience</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>AR Experience V2</title>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
     
     <style>
-      /* 讓 AR 畫面全螢幕 */
-      body { margin: 0; overflow: hidden; }
-      /* 簡單的 Loading 提示 */
+      body { margin: 0; overflow: hidden; background-color: black; }
       #loading {
-        position: fixed; top: 10px; left: 10px; color: white; 
-        background: rgba(0,0,0,0.5); padding: 5px; z-index: 999; font-family: sans-serif;
+        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        color: white; background: rgba(0,0,0,0.7); padding: 20px; border-radius: 10px;
+        z-index: 999; font-family: sans-serif; text-align: center;
+      }
+      #start-btn {
+        margin-top: 10px; padding: 10px 20px; font-size: 16px; cursor: pointer;
       }
     </style>
   </head>
 
   <body>
-    <div id="loading">AR Loading... 請允許相機權限</div>
+    <div id="loading">
+      <div>系統準備中...</div>
+      <button id="start-btn" style="display:none;">點擊開始 AR 體驗</button>
+      <div id="debug-text" style="font-size: 12px; color: yellow; margin-top:5px;"></div>
+    </div>
 
-    <a-scene embedded renderer="logarithmicDepthBuffer: true;" vr-mode-ui="enabled: false">
+    <a-scene embedded renderer="logarithmicDepthBuffer: true; alpha: true;" vr-mode-ui="enabled: false">
       
       <a-assets>
-        <a-asset-item id="logo-model" src="./AAIC_logo_Surfacing_v0001.glb"></a-asset-item>
+        <a-asset-item id="logo-model" src="./logo.glb"></a-asset-item>
       </a-assets>
 
-      <a-entity light="type: ambient; intensity: 1.5;"></a-entity>
-      <a-entity light="type: directional; intensity: 1; position: -1 1 0"></a-entity>
+      <a-entity light="type: ambient; intensity: 2;"></a-entity>
+      <a-entity light="type: directional; intensity: 1.5; position: 2 4 2"></a-entity>
+
+      <a-box color="red" position="0 0.5 -3" scale="0.5 0.5 0.5" animation="property: rotation; to: 0 360 0; loop: true; dur: 3000"></a-box>
 
       <a-entity 
         id="my-logo"
         gltf-model="#logo-model"
-        position="0 0 -3"
-        scale="1 1 1"
+        position="0 -0.5 -4"
+        scale="1 1 1" 
         animation-mixer
         cursor-listener>
       </a-entity>
@@ -45,53 +54,84 @@
     </a-scene>
 
     <script>
-      // === 這是邏輯區 ===
-      
-      // 1. 取得 Logo 物件
-      const logo = document.querySelector('#my-logo');
+      const debugText = document.getElementById('debug-text');
+      const startBtn = document.getElementById('start-btn');
+      const loadingDiv = document.getElementById('loading');
 
-      // 2. 陀螺儀互動 (偵測手機晃動)
-      window.addEventListener("deviceorientation", (event) => {
-        if (!logo) return;
-        
-        // 取得手機傾斜角度
-        const tiltX = event.beta;  // 前後傾斜
-        const tiltY = event.gamma; // 左右傾斜
+      // 顯示除錯訊息
+      function log(msg) {
+        console.log(msg);
+        debugText.innerText = msg;
+      }
 
-        // 根據傾斜度旋轉模型 (這裡可以調整靈敏度)
-        // 將手機的角度轉換成模型的旋轉角度
-        // 這種數學運算會讓模型看起來像是「浮」在空中並對動作有反應
-        logo.object3D.rotation.y = (tiltY * 0.05); 
-        logo.object3D.rotation.x = (tiltX * 0.05);
-      });
+      // 1. 初始化相機函數
+      async function initCamera() {
+        try {
+          // 強制設定：使用後置鏡頭 (environment)
+          const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { 
+              facingMode: "environment", 
+              width: { ideal: 1280 },
+              height: { ideal: 720 }
+            }, 
+            audio: false 
+          });
 
-      // 3. 點擊互動 (連結回官網)
-      logo.addEventListener('click', function () {
-        // 用新分頁開啟
-        window.open('https://anotherartinthecloud.xyz/', '_blank');
-      });
-      
-      // 4. 請求相機權限 (因為隱私權問題，現在瀏覽器比較嚴格)
-      navigator.mediaDevices.getUserMedia({ video: true })
-        .then((stream) => {
-          // 建立一個 video 元素放在背景
           const video = document.createElement('video');
           video.srcObject = stream;
-          video.play();
+          // iOS 關鍵設定：必須有這些屬性才能自動播放
+          video.setAttribute('autoplay', '');
+          video.setAttribute('muted', '');
+          video.setAttribute('playsinline', ''); 
+          
           video.style.position = 'absolute';
           video.style.top = '0';
           video.style.left = '0';
           video.style.width = '100%';
           video.style.height = '100%';
           video.style.objectFit = 'cover';
-          video.style.zIndex = '-1'; // 放在最底層
+          video.style.zIndex = '-1'; 
+          
           document.body.appendChild(video);
-          document.getElementById('loading').style.display = 'none';
-        })
-        .catch((err) => {
-          console.error("相機開啟失敗:", err);
-          document.getElementById('loading').innerText = "無法存取相機，請檢查權限";
-        });
+          
+          // 等待影片真的開始跑
+          video.onloadedmetadata = () => {
+             video.play();
+             loadingDiv.style.display = 'none'; // 隱藏讀取畫面
+          };
+
+        } catch (err) {
+          log("相機錯誤: " + err.name + " - " + err.message);
+          // 如果自動開啟失敗，顯示按鈕讓使用者手動點擊 (iOS 常見問題)
+          startBtn.style.display = 'block';
+        }
+      }
+
+      // 2. 陀螺儀互動邏輯
+      const logo = document.querySelector('#my-logo');
+      window.addEventListener("deviceorientation", (event) => {
+        if (!logo) return;
+        const tiltX = event.beta;  
+        const tiltY = event.gamma; 
+        // 加上限制，避免轉太快
+        if(tiltY) logo.object3D.rotation.y = (tiltY * 0.04); 
+        if(tiltX) logo.object3D.rotation.x = (tiltX * 0.04);
+      });
+
+      // 3. 點擊連結
+      logo.addEventListener('click', function () {
+         window.open('https://anotherartinthecloud.xyz/', '_blank');
+      });
+
+      // 程式入口：嘗試啟動
+      startBtn.addEventListener('click', () => {
+        startBtn.style.display = 'none';
+        initCamera();
+      });
+
+      // 頁面載入後自動執行
+      window.onload = initCamera;
+
     </script>
   </body>
 </html>
