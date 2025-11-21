@@ -3,23 +3,25 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>AR Experience V5</title>
+    <title>AR Experience V6 - Image Tracking</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
-
+    
     <style>
       body { margin: 0; overflow: hidden; }
-      #debug-ui {
-        position: fixed; bottom: 10px; left: 10px; z-index: 9999; 
-        color: rgba(255, 255, 255, 0.5); font-size: 10px; pointer-events: none;
+      /* 提示文字 */
+      #guide {
+        position: fixed; top: 10%; left: 50%; transform: translateX(-50%);
+        background: rgba(0,0,0,0.7); color: white; padding: 10px; border-radius: 20px;
+        text-align: center; font-size: 14px; z-index: 999; pointer-events: none;
       }
     </style>
   </head>
 
   <body style="margin: 0; overflow: hidden;">
     
-    <div id="debug-ui">V5: Scale 0.5 | Rot Corrected</div>
+    <div id="guide">請將鏡頭對準 QR Code</div>
 
     <a-scene 
       embedded 
@@ -31,47 +33,25 @@
         <a-asset-item id="logo-model" src="./logo.glb"></a-asset-item>
       </a-assets>
 
-      <a-entity light="type: ambient; intensity: 3;"></a-entity>
-      <a-entity light="type: directional; intensity: 2; position: 1 1 1"></a-entity>
-      <a-entity light="type: directional; intensity: 2; position: -1 1 2"></a-entity>
-
-      <a-entity id="logo-wrapper" position="0 0 -4" rotation="180 0 0">
+      <a-marker type="pattern" url="./pattern-marker.patt">
         
         <a-entity 
           id="my-logo"
           gltf-model="#logo-model"
           position="0 0 0" 
           scale="0.5 0.5 0.5"
-          animation-mixer
-          cursor-listener>
+          rotation="-90 0 0"
+          animation-mixer>
         </a-entity>
 
-      </a-entity>
+      </a-marker>
 
       <a-entity camera></a-entity>
 
     </a-scene>
 
     <script>
-      const wrapper = document.querySelector('#logo-wrapper');
-      
-      // 3. 軸向修正邏輯
-      // 因為我們已經用上面的 rotation="180 0 0" 把模型轉正了，
-      // 理論上現在 Y 軸就是垂直軸，X 軸就是水平軸。
-      window.addEventListener("deviceorientation", (event) => {
-        if (!wrapper) return;
-        
-        const tiltX = event.beta;  // 手機前後傾斜
-        const tiltY = event.gamma; // 手機左右傾斜
-        
-        // 映射邏輯：
-        // 手機左右傾斜 (TiltY) -> 控制模型左右旋轉 (Rotation Y)
-        // 手機前後傾斜 (TiltX) -> 控制模型前後翻轉 (Rotation X)
-        if(tiltY) wrapper.object3D.rotation.y = (tiltY * 0.05); 
-        if(tiltX) wrapper.object3D.rotation.x = (tiltX * 0.05) + Math.PI; 
-        // 注意：上面的 + Math.PI 是為了保持我們設定的 180度 翻轉基數不被覆蓋
-      });
-
+      // 點擊前往官網的邏輯
       document.addEventListener('click', function () {
          const check = confirm("前往官網？");
          if(check) {
