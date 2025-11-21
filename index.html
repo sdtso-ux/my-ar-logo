@@ -3,32 +3,31 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>AR Experience V5</title>
-    
+    <title>AR Debug V6</title>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
 
     <style>
       body { margin: 0; overflow: hidden; background-color: black; }
-      
-      /* 這是背景相機 */
       #cam-video {
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        object-fit: cover; z-index: -1; /* 放在最底層 */
+        object-fit: cover; z-index: -1;
       }
-
-      /* 讀取中的提示 */
-      #loading {
-        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-        color: white; background: rgba(0,0,0,0.6); padding: 20px; border-radius: 10px;
-        z-index: 999; font-family: sans-serif;
+      /* 診斷面板 */
+      #debug-panel {
+        position: fixed; top: 10px; left: 10px; 
+        background: rgba(0,0,0,0.8); color: yellow; 
+        padding: 10px; border-radius: 8px; font-size: 14px;
+        z-index: 9999; font-family: monospace; pointer-events: none;
       }
     </style>
   </head>
 
   <body>
-    
-    <div id="loading">啟動相機中...</div>
+    <div id="debug-panel">
+      System: 初始化中...<br>
+      Model: 等待載入...
+    </div>
 
     <video id="cam-video" autoplay muted playsinline></video>
 
@@ -38,73 +37,58 @@
         <a-asset-item id="logo-model" src="./logo.glb"></a-asset-item>
       </a-assets>
 
-      <a-entity light="type: ambient; intensity: 2;"></a-entity>
-      <a-entity light="type: directional; intensity: 2; position: 1 2 1"></a-entity>
+      <a-entity light="type: ambient; intensity: 3;"></a-entity>
+      <a-entity light="type: directional; intensity: 2; position: 1 1 1"></a-entity>
 
-      <a-entity id="logo-wrapper" position="0 0 -4">
+      <a-box color="red" position="0 0.5 -3" scale="0.2 0.2 0.2" animation="property: rotation; to: 0 360 0; loop: true; dur: 3000"></a-box>
+
+      <a-entity id="logo-wrapper" position="0 -0.5 -3">
         <a-entity 
           id="my-logo"
           gltf-model="#logo-model"
-          position="0 0 0" 
-          scale="5 5 5"
-          animation-mixer
-          cursor-listener>
+          scale="0.1 0.1 0.1" 
+          animation-mixer>
         </a-entity>
       </a-entity>
 
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-      
       <a-sky color="#000000" opacity="0"></a-sky> 
 
     </a-scene>
 
     <script>
-      const loading = document.getElementById('loading');
-      const videoElement = document.getElementById('cam-video');
-      const wrapper = document.querySelector('#logo-wrapper');
+      const debugPanel = document.getElementById('debug-panel');
+      const logoEntity = document.querySelector('#my-logo');
 
-      // === 1. 啟動相機 (最單純的寫法) ===
-      async function startCamera() {
-        try {
-          // 嘗試取得後置鏡頭
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: { 
-              facingMode: "environment",
-              width: { ideal: 1280 },
-              height: { ideal: 720 }
-            },
-            audio: false
-          });
-          
-          videoElement.srcObject = stream;
-          loading.style.display = 'none'; // 隱藏讀取文字
-          
-        } catch (error) {
-          console.error("相機錯誤:", error);
-          loading.innerText = "請允許相機權限 / 無法開啟鏡頭";
-        }
+      function log(msg) {
+        debugPanel.innerHTML += `<br>${msg}`;
       }
 
-      // 執行啟動
+      // 1. 檢查模型是否讀取成功
+      logoEntity.addEventListener('model-loaded', () => {
+        log("Model: ✅ 讀取成功 (Loaded)");
+        log("注意: 如果沒看到，就是太小或太大");
+      });
+
+      logoEntity.addEventListener('model-error', (e) => {
+        log("Model: ❌ 讀取失敗 (Error)");
+        log("請檢查 GitHub 檔名大小寫是否完全一致");
+      });
+
+      // 2. 啟動相機
+      async function startCamera() {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "environment" }, audio: false
+          });
+          document.getElementById('cam-video').srcObject = stream;
+          debugPanel.innerHTML = "System: 相機已啟動";
+          log("Model: 下載中...");
+        } catch (error) {
+          log("System: 相機權限錯誤");
+        }
+      }
       startCamera();
-
-      // === 2. 陀螺儀互動 ===
-      window.addEventListener("deviceorientation", (event) => {
-        if (!wrapper) return;
-        const tiltX = event.beta;  
-        const tiltY = event.gamma; 
-        
-        // 旋轉邏輯
-        if(tiltY) wrapper.object3D.rotation.y = (tiltY * 0.05); 
-        if(tiltX) wrapper.object3D.rotation.x = (tiltX * 0.05);
-      });
-
-      // === 3. 點擊連結 ===
-      document.addEventListener('click', function () {
-         if(confirm("前往官網？")) {
-            window.open('https://anotherartinthecloud.xyz/', '_blank');
-         }
-      });
     </script>
   </body>
 </html>
